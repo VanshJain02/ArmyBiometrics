@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "489670019567",
+    "project_id": "touchlessbiometrics",
+    "storage_bucket": "touchlessbiometrics.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:489670019567:android:91c9e116114c41b669ce1a",
+        "android_client_info": {
+          "package_name": "com.example.touchlessbiometrics"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "489670019567-t9cobkm3s8fh535o92s9s2rtsp21guit.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.touchlessbiometrics",
+            "certificate_hash": "f1413859bb9bba16f3b5630650811d995912f6eb"
+          }
+        },
+        {
+          "client_id": "489670019567-4rj53s6udfdetska4nfi86m860a0l2g6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBtuTN2UkMTpJWHTBGtwHJGiynACOufBwQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "489670019567-4rj53s6udfdetska4nfi86m860a0l2g6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

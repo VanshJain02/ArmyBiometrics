@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".screens.SettingFragment">
+
+    <!-- TODO: Update blank fragment layout -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_marginTop="30dp"
+            android:background="@drawable/layout_shape"
+            android:orientation="vertical">
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:padding="10dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="CAPTURE MODE"
+                    android:textSize="20dp"/>
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_alignParentRight="true"
+                    android:orientation="vertical"
+                    android:layout_height="wrap_content">
+                    <RadioGroup
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:id="@+id/settings_theme_grp">
+                        <RadioButton
+                            android:id="@+id/settings_btn_single"
+                            android:layout_width="wrap_content"
+                            android:layoutDirection="rtl"
+                            android:text="SINGLE"
+                            android:textSize="18dp"
+                            android:layout_alignParentRight="true"
+                            android:layout_centerVertical="true"
+                            android:layout_marginRight="0dp"
+                            android:layout_height="wrap_content"/>
+                        <RadioButton
+                            android:layout_width="wrap_content"
+                            android:text=" MULTI "
+                            android:layoutDirection="rtl"
+                            android:textSize="18dp"
+                            android:id="@+id/settings_btn_multi"
+                            android:layout_alignParentRight="true"
+                            android:layout_centerVertical="true"
+                            android:layout_marginRight="0dp"
+                            android:layout_height="wrap_content"/>
+                    </RadioGroup>
+
+
+                </LinearLayout>
+            </RelativeLayout>
+
+
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PROCESSING MODES"
+            android:layout_marginLeft="15dp"
+            android:layout_marginTop="20dp"
+            android:textSize="22dp"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="10dp"
+            android:background="@drawable/layout_shape"
+            android:orientation="vertical">
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:padding="10dp"
+
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:id="@+id/settings_txt_sharpening"
+                    android:text="SOBEL"
+                    android:textSize="20dp"/>
+
+                <RadioButton
+                    android:id="@+id/settings_btn_mod1"
+                    android:layout_width="wrap_content"
+                    android:layout_alignBaseline="@id/settings_txt_sharpening"
+                    android:layout_alignParentRight="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginRight="-10dp"
+                    android:layout_height="wrap_content"/>
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:padding="10dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:id="@+id/settings_txt_atm"
+                    android:text="ADAPTIVE THRESHOLD"
+                    android:textSize="20dp"/>
+
+                <RadioButton
+                    android:id="@+id/settings_btn_mod2"
+                    android:layout_width="wrap_content"
+                    android:layout_alignBaseline="@id/settings_txt_atm"
+                    android:layout_alignParentRight="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginRight="-10dp"
+                    android:layout_height="wrap_content"/>
+            </RelativeLayout>
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:padding="10dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:id="@+id/settings_txt_atmench"
+                    android:text="ATM + ENHANCING"
+                    android:textSize="20dp"/>
+
+                <RadioButton
+                    android:id="@+id/settings_btn_mod3"
+                    android:layout_width="wrap_content"
+                    android:layout_alignBaseline="@id/settings_txt_atmench"
+                    android:layout_alignParentRight="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginRight="-10dp"
+                    android:layout_height="wrap_content"/>
+            </RelativeLayout>
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:padding="10dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:id="@+id/settings_txt_all"
+                    android:text="SOBEL+ATM+ENHANCED"
+                    android:textSize="20dp"/>
+
+                <RadioButton
+                    android:id="@+id/settings_btn_mod4"
+                    android:layout_width="wrap_content"
+                    android:layout_alignBaseline="@id/settings_txt_all"
+                    android:layout_alignParentRight="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginRight="-10dp"
+                    android:layout_height="wrap_content"/>
+            </RelativeLayout>
+<!--            <RelativeLayout-->
+<!--                android:layout_width="match_parent"-->
+<!--                android:padding="10dp"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:orientation="horizontal">-->
+<!--                <TextView-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_height="wrap_content"-->
+<!--                    android:layout_centerVertical="true"-->
+<!--                    android:id="@+id/settings_txt_only"-->
+<!--                    android:text="ONLY FINGER"-->
+<!--                    android:textSize="20dp"/>-->
+
+<!--                <RadioButton-->
+<!--                    android:id="@+id/settings_btn_mod5"-->
+<!--                    android:layout_width="wrap_content"-->
+<!--                    android:layout_alignBaseline="@id/settings_txt_only"-->
+<!--                    android:layout_alignParentRight="true"-->
+<!--                    android:layout_centerVertical="true"-->
+<!--                    android:layout_marginRight="-10dp"-->
+<!--                    android:layout_height="wrap_content"/>-->
+<!--            </RelativeLayout>-->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:padding="10dp"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:id="@+id/settings_enhext"
+                    android:text="ENH + EXTRACTION"
+                    android:textSize="20dp"/>
+
+                <RadioButton
+                    android:id="@+id/settings_btn_mod6"
+                    android:layout_width="wrap_content"
+                    android:layout_alignBaseline="@id/settings_enhext"
+                    android:layout_alignParentRight="true"
+                    android:layout_centerVertical="true"
+                    android:layout_marginRight="-10dp"
+                    android:layout_height="wrap_content"/>
+            </RelativeLayout>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>
