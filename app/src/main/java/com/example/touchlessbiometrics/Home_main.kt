@@ -2,12 +2,15 @@ package com.example.touchlessbiometrics
 
 
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.graphics.Matrix
+import android.graphics.drawable.ColorDrawable
 import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
@@ -21,6 +24,7 @@ import android.util.SparseArray
 import android.view.View
 import android.view.animation.Animation
 import android.view.animation.AnimationUtils
+import android.widget.Button
 import android.widget.Toast
 import androidx.annotation.IdRes
 import androidx.appcompat.app.AppCompatActivity
@@ -45,9 +49,9 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.StorageReference
 import com.google.firebase.storage.UploadTask
-import com.google.mediapipe.solutions.hands.Hands
-import com.google.mediapipe.solutions.hands.HandsOptions
-import com.google.mediapipe.solutions.hands.HandsResult
+//import com.google.mediapipe.solutions.hands.Hands
+//import com.google.mediapipe.solutions.hands.HandsOptions
+//import com.google.mediapipe.solutions.hands.HandsResult
 import kotlinx.coroutines.*
 import java.io.*
 import java.lang.Runnable
@@ -85,7 +89,7 @@ class Home_main : AppCompatActivity() {
     var lon=""
     var x= FirebaseApp.initializeApp(this)
 
-    var firebase: FirebaseFirestore = FirebaseFirestore.getInstance()
+    lateinit var firebase: FirebaseFirestore
 
     lateinit var storage: FirebaseStorage
     lateinit var storageReference: StorageReference
@@ -238,6 +242,8 @@ class Home_main : AppCompatActivity() {
 
 //            Log.d("PROCESSING")
             onCameraFabClicked()
+
+
         }
         camera_btn.setOnClickListener{
 
@@ -258,7 +264,9 @@ class Home_main : AppCompatActivity() {
         }
         outputDirectory = getOutputDirectory()
         storage = FirebaseStorage.getInstance()
+        firebase = FirebaseFirestore.getInstance()
         storageReference = storage.reference
+
         listImageDirectory()
         if(allPermissionGranted()){
 
@@ -400,7 +408,7 @@ class Home_main : AppCompatActivity() {
 
                     val job = CoroutineScope(Dispatchers.Default).launch {
                        if(capMod==2){
-                           greymap=makeGray(bitmap)
+//                           greymap=mbitmap)
                        }
                     }
                     runBlocking {
@@ -434,14 +442,14 @@ class Home_main : AppCompatActivity() {
                                     var fOut1: OutputStream? = null
                                     val file1 = File(
                                         outputUri,
-                                        greymap[key].toString() + "og.png"
+                                        key.toString() + "og.png"
                                     )
                                     fOut1 = FileOutputStream(file1)
                                     greymap[key]?.compress(Bitmap.CompressFormat.PNG, 100, fOut1)
                                     var fOut: OutputStream? = null
                                     val file = File(
                                         outputUri,
-                                        greymap[key].toString() + ".png"
+                                        key.toString() + ".png"
                                     ) // the File to save , append increasing numeric counter to prevent files from getting overwritten.
                                     fOut = FileOutputStream(file)
                                     Log.d("IMAGE", "NEXT2")
@@ -453,16 +461,16 @@ class Home_main : AppCompatActivity() {
 //                                    progressB.setTitle("uploading")
 //                                    progressB.show()
 
-                                    var ref = storageReference.child("images/"+greymap[key].toString()+".png")
-
-                                    ref.putFile(Uri.fromFile(file)).addOnSuccessListener(OnSuccessListener<UploadTask.TaskSnapshot>{
-//                                        progressB.dismiss()
+//                                    var ref = storageReference.child("processing/"+outputUri.name.toString()+"/"+key.toString()+".png")
+//
+//                                    ref.putFile(Uri.fromFile(file)).addOnSuccessListener(OnSuccessListener<UploadTask.TaskSnapshot>{
+////                                        progressB.dismiss()
 //                                        Toast.makeText(this@Home_main,"UPLOADED",Toast.LENGTH_SHORT).show()
-                                    }).addOnFailureListener(OnFailureListener {
-//                                        progressB.dismiss()
-                                        Toast.makeText(this@Home_main,"UPLOAD FAILED!",Toast.LENGTH_SHORT).show()
-
-                                    })
+//                                    }).addOnFailureListener(OnFailureListener {
+////                                        progressB.dismiss()
+//                                        Toast.makeText(this@Home_main,"UPLOAD FAILED!",Toast.LENGTH_SHORT).show()
+//
+//                                    })
 
                                     // the File to save , append increasing numeric counter to prevent files from getting overwritten.
     //                                fOut.flush(); // Not really required
@@ -492,13 +500,13 @@ class Home_main : AppCompatActivity() {
                         updateCompletedRecyclerView(outputUri.path.toString())
                     }
 
-                    var map = hashMapOf<String,String>("name" to "A","time" to dateFormat.format(Date()),"latitude" to lat ,"longitude" to lon)
-                    firebase.collection("data").add(map).addOnSuccessListener(OnSuccessListener<DocumentReference>{
-                        Toast.makeText(this@Home_main,"ATTENDANCE MARKED",Toast.LENGTH_SHORT).show()
-                    }).addOnFailureListener(OnFailureListener {
-                        Toast.makeText(this@Home_main,"FAILED! TRY AGAIN",Toast.LENGTH_SHORT).show()
-
-                    })
+//                    var map = hashMapOf<String,String>("name" to "A","time" to dateFormat.format(Date()),"latitude" to lat ,"longitude" to lon)
+//                    firebase.collection("data").add(map).addOnSuccessListener(OnSuccessListener<DocumentReference>{
+//                        Toast.makeText(this@Home_main,"ATTENDANCE MARKED",Toast.LENGTH_SHORT).show()
+//                    }).addOnFailureListener(OnFailureListener {
+//                        Toast.makeText(this@Home_main,"FAILED! TRY AGAIN",Toast.LENGTH_SHORT).show()
+//
+//                    })
                     runOnUiThread(Runnable {
                         Toast.makeText(
                             this@Home_main,
@@ -596,7 +604,7 @@ class Home_main : AppCompatActivity() {
                 }, ContextCompat.getMainExecutor(this))
             } else {
                 Toast.makeText(this,"Permission not granted", Toast.LENGTH_SHORT).show()
-                finish()
+//                finish()
 
             }
         }
@@ -607,142 +615,127 @@ class Home_main : AppCompatActivity() {
 //            }
 //        }
     }
-    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
-        val planeProxy = image.planes[0]
-        val buffer: ByteBuffer = planeProxy.buffer
-        val bytes = ByteArray(buffer.remaining())
-        buffer.get(bytes)
-        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }
+//    private fun imageProxyToBitmap(image: ImageProxy): Bitmap {
+//        val planeProxy = image.planes[0]
+//        val buffer: ByteBuffer = planeProxy.buffer
+//        val bytes = ByteArray(buffer.remaining())
+//        buffer.get(bytes)
+//        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+//    }
     fun flipBitmapHorizontally(bitmap: Bitmap): Bitmap {
         val matrix = Matrix().apply { postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f) }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
-    suspend fun makeGray(bitma: Bitmap) : HashMap<Any, Bitmap> {
-
-//        var bi = flipBitmapHorizontally(bitma)
-        var rotatebool = false
-        if(bitma.width>bitma.height){
-            val matrix = Matrix()
-            rotatebool= true
-//            matrix.postRotate(90f)
-//            Log.d("PROCESSING","ROTATE IMAGE")
-//            val rotatedBitmap = Bitmap.createBitmap(
-//                bitma,
-//                0,
-//                0,
-//                bitma.width,
-//                bitma.height,
-//                matrix,
-//                true
-//            )
-//            bi = rotatedBitmap
+//    suspend fun makeGray(bitma: Bitmap) : HashMap<Any, Bitmap> {
+////        val bitmap = flipBitmapHorizontally(bitma)
+//        val bitmap = bitma
+//        var rotatebool = false
+//        if(bitma.width>bitma.height){
+//            rotatebool= true
+//        }
+//        var hands = Hands(this, HandsOptions.builder()
+//            .setStaticImageMode(true)
+//            .setMaxNumHands(2)
+//            .setRunOnGpu(true)
+//            .build()
+//        )
+//        val  job = CoroutineScope(Dispatchers.Default).launch {
+//            hands.send(bitmap)
+//        }
+//        job.join()
+//        var top1: Bitmap = bitmap
 //
-        }
-        var bitmap = flipBitmapHorizontally(bitma)
-//        var bitmap  = bi
-        var hands = Hands(this, HandsOptions.builder()
-            .setStaticImageMode(true)
-            .setMaxNumHands(2)
-            .setRunOnGpu(true)
-            .build()
-        )
-        val job = CoroutineScope(Dispatchers.Default).launch {
-            hands.send(bitmap)
-        }
-        job.join()
-        var top1: Bitmap = bitmap
-
-        var fingers: HashMap<Any, Bitmap> = hashMapOf(7 to bitmap,11 to bitmap,15 to bitmap,19 to bitmap)
-
-        // Connects MediaPipe Hands solution to the user-defined HandsResultImageView.
-        Log.d("IMAGE","Waiting for result")
-        hands.setResultListener { handsResult: HandsResult? ->
-            Log.d("IMAGE","Waiting for result")
-            if (handsResult != null) {
-    //                var coords: HashMap<Any,Pair<Array<Double>,Array<Int>>> = hashMapOf(7 to Pair(arrayOf<Double>(-1.0), arrayOf<Int>(-1)),11 to Pair(arrayOf<Double>(-1.0),arrayOf<Int>(-1)),15 to Pair(arrayOf<Double>(-1.0),arrayOf<Int>(-1)),19 to Pair(arrayOf<Double>(-1.0),arrayOf<Int>(-1)))
-                for(key in fingers.keys) {
-                    Log.d("IMAGE", "Start Cropping")
-                    var direction = 0
-                    var start_point = arrayOf<Double>(((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int) + 1).x) * bitmap.width).toDouble(), (((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int) + 1).y) * bitmap.height)).toDouble())
-//                    Log.d("MATCHING",key.toString()+ "startpt"+"\t"+start_point.toString())
-
-                    var end_point = arrayOf<Double>(((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int)).x) * bitmap.width).toDouble(), (((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int)).y) * bitmap.height)).toDouble())
-//                    Log.d("MATCHING",key.toString()+ "endpt"+"\t"+end_point.toString())
-
-                    var m = (-end_point[1]+start_point[1])/(-end_point[0]+start_point[0]+0.000001)
-                    var angle= atan(m) *180/Math.PI
-                    var dist_pt = sqrt((end_point[0] - start_point[0]).pow(2.0) + (end_point[1] - start_point[1]).pow(2.0))
-
-                    var mid_point = arrayOf<Double>(((start_point[0] + end_point[0]) / 2), ((start_point[1] + end_point[1]) / 2))
-                    var axesy = (dist_pt * 1.6 / 2)
-                    Log.d("MATCHING",key.toString()+ " midpt"+"\t"+mid_point[0].toString()+"\t"+mid_point[1].toString())
-//                    Log.d("MATCHING",key.toString()+ "axesy"+"\t"+axesy.toString())
-
-                    var half_length_diag = (dist_pt*2.5)/2
-
-                    var axesLength: Array<Int>
-                    var palm_pointx = ((handsResult.multiHandLandmarks().get(0).landmarkList.get((9)).x )* bitmap.width).toInt()
-                    if(abs(angle) <45) {
-                        if(palm_pointx < mid_point[0]) {
-                            direction = 1
-                        }
-                        else {
-                            direction = 2
-                        }
-                        axesLength = arrayOf<Int>(
-                            (abs(axesy/2)+abs(axesy/6)).toInt(),
-                            (abs(axesy) + abs(axesy / 10)).toInt()
-                        )
-                    }
-                    else{
-                        axesLength = arrayOf<Int>(
-                            (abs(axesy) + abs(axesy / 10)).toInt(),
-                            (abs(axesy / 2)+abs(axesy/6)).toInt()
-                        )
-                    }
-                    Log.d("MATCHING",key.toString()+ "\t"+axesLength[0].toString()+"\t"+axesLength[1].toString())
-
-                    top1 = Bitmap.createBitmap(bitmap, (mid_point[0] - axesLength[1]).toInt(), (mid_point[1] - axesLength[0]*1.2).toInt(), 2 * axesLength[1].toInt(), (3.2 * axesLength[0]-half_length_diag).toInt())
-                    Log.d("MATCHING",key.toString()+ "\t"+top1.getWidth().toString()+"\t"+ top1.getHeight())
-                    if(rotatebool){
-                        top1 = Bitmap.createBitmap(bitmap, (mid_point[0] - axesLength[1]*0.4).toInt(), (mid_point[1] - axesLength[0]*0.9).toInt(), (1.6 * axesLength[1]).toInt(), (1.8* axesLength[0]).toInt())
-
-                    }
-                    if(abs(angle) <45) {
-//                        top1 = Bitmap...createBitmap(bitmap, (mid_point[0] - axesLength[1]).toInt(), (mid_point[1] - axesLength[0]*1.2).toInt(), 2 * axesLength[1].toInt(), (3.2 * axesLength[0]-half_length_diag).toInt())
-
-                        val matrix = Matrix()
-                        if(direction == 1) {matrix.postRotate(270F)}
-                        if(direction == 2) {matrix.postRotate(90F)}
-                        top1 = Bitmap.createBitmap(
-                            top1,
-                            0,
-                            0,
-                            top1.getWidth(),
-                            top1.getHeight(),
-                            matrix,
-                            true
-                        )
-                    }
-                    fingers[key]=top1
-                }
-
-            }
-            else{
-                Log.d("IMAGE", "Hands error")
-            }
-        }
-        hands.setErrorListener { message: String, e: RuntimeException? ->
-            Log.d(
-                "IMAGE",
-                "MediaPipe Hands error"
-            )
-        }
-        Log.d("IMAGE","MAKE GRAY PROCESSED")
-        delay(2000)
-        return fingers
-    }
+//        var fingers: HashMap<Any, Bitmap> = hashMapOf(7 to bitmap,11 to bitmap,15 to bitmap,19 to bitmap)
+//        var handtype: String = "Left"
+//        // Connects MediaPipe Hands solution to the user-defined HandsResultImageView.
+//        Log.d("IMAGE","Waiting for result")
+//        hands.setResultListener { handsResult: HandsResult? ->
+//            Log.d("IMAGE","Waiting for result")
+//            if (handsResult != null) {
+//                //                var coords: HashMap<Any,Pair<Array<Double>,Array<Int>>> = hashMapOf(7 to Pair(arrayOf<Double>(-1.0), arrayOf<Int>(-1)),11 to Pair(arrayOf<Double>(-1.0),arrayOf<Int>(-1)),15 to Pair(arrayOf<Double>(-1.0),arrayOf<Int>(-1)),19 to Pair(arrayOf<Double>(-1.0),arrayOf<Int>(-1)))
+//                for(key in fingers.keys) {
+//                    Log.d("IMAGE", "Start Cropping")
+//                    var direction = 0
+//                    var start_point = arrayOf<kotlin.Double>(((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int) + 1).x) * bitmap.width).toDouble(), (((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int) + 1).y) * bitmap.height)).toDouble())
+//                    Log.d("MATCHING",key.toString()+ " startpt"+"\t"+start_point[0].toString()+"\t"+start_point[1].toString())
+//
+//
+//                    var end_point = arrayOf<kotlin.Double>(((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int)).x) * bitmap.width).toDouble(), (((handsResult.multiHandLandmarks().get(0).landmarkList.get((key as Int)).y) * bitmap.height)).toDouble())
+//                    Log.d("MATCHING",key.toString()+ " endpt"+"\t"+end_point[0].toString()+"\t"+end_point[1].toString())
+//
+//                    var m = (-end_point[1]+start_point[1])/(-end_point[0]+start_point[0]+0.000001)
+//                    var angle= atan(m) *180/Math.PI
+//                    var dist_pt = sqrt((end_point[0] - start_point[0]).pow(2.0) + (end_point[1] - start_point[1]).pow(2.0))
+//                    Log.d("MATCHING",key.toString()+ " distpt"+"\t"+dist_pt.toString())
+//
+//                    var mid_point = arrayOf<kotlin.Double>(((start_point[0] + end_point[0]) / 2), ((start_point[1] + end_point[1]) / 2))
+//                    var axesy = (dist_pt * 1.6 / 2)
+//                    Log.d("MATCHING",key.toString()+ " axesy"+"\t"+axesy.toString())
+//
+//                    var axesLength: Array<Int>
+//                    var half_length_diag = (dist_pt*2.5)/2
+//
+//                    var palm_pointx = ((handsResult.multiHandLandmarks().get(0).landmarkList.get((9)).x )* bitmap.width).toInt()
+//                    if(abs(angle) <45) {
+//                        if(palm_pointx < mid_point[0]) {
+//                            direction = 1
+//                        }
+//                        else {
+//                            direction = 2
+//                        }
+//                        axesLength = arrayOf<Int>(
+//                            (abs(axesy/2)+abs(axesy/6)).toInt(),
+//                            (abs(axesy) + abs(axesy / 10)).toInt()
+//                        )
+//                    }
+//                    else{
+//                        axesLength = arrayOf<Int>(
+//                            (abs(axesy) + abs(axesy / 10)).toInt(),
+//                            (abs(axesy / 2)+abs(axesy/6)).toInt()
+//                        )
+//                    }
+//                    Log.d("MATCHING",key.toString()+ "\t"+axesLength[0].toString()+"\t"+axesLength[1].toString())
+//
+//                    top1 = Bitmap.createBitmap(bitmap, (mid_point[0] - axesLength[1]).toInt(), (mid_point[1] - axesLength[0]*1.2).toInt(), 2 * axesLength[1].toInt(), (3.2 * axesLength[0]-half_length_diag).toInt())
+//
+//                    if(rotatebool){
+//                        top1 = Bitmap.createBitmap(bitmap, (mid_point[0] - axesLength[1]*1.2).toInt(), (mid_point[1] - axesLength[0]*0.9).toInt(), (1.6 * axesLength[1]).toInt(), (1.8* axesLength[0]).toInt())
+//                    }
+//                    Log.d("MATCHING",key.toString()+ "\t"+top1.getWidth().toString()+"\t"+ top1.getHeight())
+//                    if(abs(angle) <45) {
+//                        val matrix = Matrix()
+//                        if(direction == 1) {matrix.postRotate(270F)}
+//                        if(direction == 2) {matrix.postRotate(90F)}
+//                        top1 = Bitmap.createBitmap(
+//                            top1,
+//                            0,
+//                            0,
+//                            top1.getWidth(),
+//                            top1.getHeight(),
+//                            matrix,
+//                            true
+//                        )
+//                    }
+//                    val tmptop = flipBitmapHorizontally(top1)
+//
+//                    fingers[key]=tmptop
+//                }
+//
+//            }
+//            else{
+//                Log.d("IMAGE", "Hands error")
+//            }
+//        }
+//        hands.setErrorListener { message: String, e: RuntimeException? ->
+//            Log.d(
+//                "IMAGE",
+//                "MediaPipe Hands error"
+//            )
+//        }
+//        Log.d("IMAGE","MAKE GRAY PROCESSED")
+//        delay(2000)
+//        return fingers
+//    }
     private fun getStringImage(grayBitmap: Bitmap?): String? {
         var baos= ByteArrayOutputStream()
         grayBitmap?.compress(Bitmap.CompressFormat.PNG,100,baos)

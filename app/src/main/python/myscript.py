@@ -12,6 +12,19 @@ import skimage.morphology
 from skimage.morphology import convex_hull_image, erosion
 from skimage.morphology import square
 
+import os
+import cv2
+import numpy as np
+import matplotlib as mpl
+import matplotlib.cm as cm
+
+from sklearn.cluster import KMeans
+from PIL import Image
+from numpy import asarray
+from numpy import save
+from kymatio.numpy import Scattering2D
+from os.path import dirname,join
+
 import fingerprint_enhancer
 from scipy.fft import fft, fftfreq
 
@@ -24,6 +37,10 @@ def main(data,mod):
 	# kernel2 = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
 
 	# image1 = cv2.filter2D(src= imge, ddepth=-1, kernel=kernel2)
+
+	filename = join(dirname(__file__),"Indian Army Inkprint_Scattering Coeff_Array.npy")
+
+	all_images_feats = np.load(filename)
 
 	# image = cv2.pyrUp(image1)
 
@@ -70,6 +87,12 @@ def main(data,mod):
 		out1 = cv2.resize(out1, (500,1000))
 		final_image = extract_minutiae_features(out1,10,False,True, True )
 
+	elif(mod==7):
+		threshold = 1.0244202849491886
+		result = identification(imge, threshold,all_images_feats)
+
+
+
 
 
 	else:
@@ -97,16 +120,30 @@ def main(data,mod):
 	# thresholded_image1 = cv2.flip(thresholded_image1, 1)
 	# pil_im = Image.fromarray(cv2.cvtColor(enhanced_image1, cv2.COLOR_BGR2RGB))
 
+	# pil_im = Image.fromarray(final_image)
+	# buff = io.BytesIO()
+	# pil_im.save(buff,format="PNG")
+	# img_str = base64.b64encode(buff.getvalue())
+	return ""+str(result[0][0])
+
+def saket_proces(img,mod):
+	decodedData = base64.b64decode(img)
+	npData = np.fromstring(decodedData,np.uint8)
+	imge = cv2.imdecode(npData,cv2.IMREAD_UNCHANGED)
+	final_image = preprocessed_coeff1(imge)
 	pil_im = Image.fromarray(final_image)
 	buff = io.BytesIO()
 	pil_im.save(buff,format="PNG")
 	img_str = base64.b64encode(buff.getvalue())
-	return ""+str(img_str,'utf-8')
+	return  ""+str(img_str,'utf-8')
+
+
+
 
 def getpixel(data):
 	decodedData = base64.b64decode(data)
 	npData = np.fromstring(decodedData,np.uint8)
-	imge = cv2.imdecode(npData,cv2.IMREAD_UNCHANGED)
+	imge = cv2.imdecode(npData,cv2.IMREAD_GRAYSCALE)
 	anc_img = cv2.resize(imge, (96, 96))
 	ans=""
 
@@ -114,12 +151,12 @@ def getpixel(data):
 	le=0
 	for i in range(96):
 		for j in range(96):
-			for k in range(3):
+			# for k in range(3):
 				le+=1
-				if(i==95 and j==95 and k==2):
-					ans+=str(anc_img[i][j][k])
+				if(i==95 and j==95):
+					ans+=str(anc_img[i][j])
 				else:
-					ans+=str(anc_img[i][j][k])+" "
+					ans+=str(anc_img[i][j])+" "
 
 			# print(f"{str(anc_img[i][j][0])}\t{str(anc_img[i][j][1])}\t{str(anc_img[i][j][2])}")
 
@@ -893,3 +930,143 @@ def extract_minutiae_features(img, spuriousMinutiaeThresh, invertImage, showResu
 # 		# print(fin)
 # 	# p = load_model(filename)
 # 	print("modelread")
+def segmentation(image,spatial_weight,show_images=False):
+	dim1 = image.shape[0]; dim2 = image.shape[1];
+	image_convert = cv2.cvtColor(image, cv2.COLOR_RGB2YCR_CB)
+
+	na, nb = (dim2, dim1)
+	a = np.linspace(1, dim2, na)
+	b = np.linspace(1, dim1, nb)
+	xb, xa = np.meshgrid(a,b)
+	xb = np.reshape(xb,(dim1,dim2,1)); xa = np.reshape(xa,(dim1,dim2,1));
+	# plt.imshow(xa); plt.title("Color Transformed Image"); plt.show();
+	image_convert_concat = np.concatenate((image_convert,xb,xa),axis = 2)
+
+	image_convert_reshape = np.reshape(image_convert_concat, (dim1*dim2,5))
+	image_convert_reshape_mean = np.mean(image_convert_reshape,axis=0)
+	image_convert_reshape_sd = np.std(image_convert_reshape,axis=0)
+
+	image_convert_reshape = (image_convert_reshape-image_convert_reshape_mean)/image_convert_reshape_sd
+	image_convert_reshape[:,3] = spatial_weight*image_convert_reshape[:,3];
+	image_convert_reshape[:,4] = spatial_weight*image_convert_reshape[:,4];
+
+	kmeans = KMeans(n_clusters=2, init='k-means++', n_init=10).fit(image_convert_reshape)
+	# n_init = 10 is fix to remove warning of future upgradation. In future this value will be set to 10 by default. Currently it is set to 1.
+	mask = np.reshape(kmeans.labels_, (dim1,dim2,1))
+	if mask[0,0,0] == 1:
+		mask = 1-mask
+
+	segmented_image = np.multiply(image,mask)
+	# if show_images:
+	#   plt.figure()
+	#   plt.subplot(1,3,1)
+	#   plt.imshow(image);
+	#   plt.title("Original Image");
+	#   plt.subplot(1,3,2)
+	#   plt.imshow(mask[:,:,0]);
+	#   plt.title("Mask Image");
+	#   plt.subplot(1,3,3)
+	#   plt.imshow(segmented_image);
+	#   plt.title("Output Masked Image"); plt.show();
+
+	return segmented_image
+
+def preprocessed_coeff1(src_img):
+	img_raw = src_img
+	img_raw_rgb = cv2.cvtColor(img_raw,cv2.COLOR_BGR2RGB)
+	img_s = segmentation(img_raw_rgb,0.05,show_images=False)
+	img_snp = img_s.astype(np.uint8)
+	img_snpr = cv2.resize(img_snp, (200,200))
+	img_snprg = cv2.cvtColor(img_snpr,cv2.COLOR_BGR2GRAY)
+	clahe = cv2.createCLAHE(clipLimit =127, tileGridSize=(10,10)) #clahe = cv2.createCLAHE(clipLimit =5, tileGridSize=(4,4))
+	cl_img = clahe.apply(img_snprg)
+
+	ATG_image = cv2.adaptiveThreshold(cl_img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,5,1) #ATG_image = cv2.adaptiveThreshold(cl_img,127,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,29,10)
+	print("Image Size: ", ATG_image.shape)
+
+	L = 8
+	J = 3
+	scattering = Scattering2D(J=J, shape=ATG_image.shape, L=L, max_order=2)
+
+	src_img_tensor = ATG_image.astype(np.float32) / 255.
+
+	scat_coeffs = scattering(src_img_tensor)
+	print("coeffs shape: ", scat_coeffs.shape)
+	scat_coeffs= -scat_coeffs
+
+	len_order_1 = J*L
+	scat_coeffs_order_1 = scat_coeffs[1:1+len_order_1, :, :]
+	norm_order_1 = mpl.colors.Normalize(scat_coeffs_order_1.min(), scat_coeffs_order_1.max(), clip=True)
+	mapper_order_1 = cm.ScalarMappable(norm=norm_order_1, cmap="gray")
+
+	len_order_2 = (J*(J-1)//2)*(L**2)
+	scat_coeffs_order_2 = scat_coeffs[1+len_order_1:, :, :]
+	norm_order_2 = mpl.colors.Normalize(scat_coeffs_order_2.min(), scat_coeffs_order_2.max(), clip=True)
+	mapper_order_2 = cm.ScalarMappable(norm=norm_order_2, cmap="gray")
+
+	window_rows, window_columns = scat_coeffs.shape[1:]
+
+	return ATG_image
+
+def preprocessed_coeff(src_img):
+	img_raw = src_img
+	img_raw_rgb = cv2.cvtColor(img_raw,cv2.COLOR_BGR2RGB)
+	img_s = segmentation(img_raw_rgb,0.05,show_images=False)
+	img_snp = img_s.astype(np.uint8)
+	img_snpr = cv2.resize(img_snp, (200,200))
+	img_snprg = cv2.cvtColor(img_snpr,cv2.COLOR_BGR2GRAY)
+	clahe = cv2.createCLAHE(clipLimit =127, tileGridSize=(10,10)) #clahe = cv2.createCLAHE(clipLimit =5, tileGridSize=(4,4))
+	cl_img = clahe.apply(img_snprg)
+
+	ATG_image = cv2.adaptiveThreshold(cl_img,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,5,1) #ATG_image = cv2.adaptiveThreshold(cl_img,127,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,29,10)
+	print("Image Size: ", ATG_image.shape)
+
+	L = 8
+	J = 3
+	scattering = Scattering2D(J=J, shape=ATG_image.shape, L=L, max_order=2)
+
+	src_img_tensor = ATG_image.astype(np.float32) / 255.
+
+	scat_coeffs = scattering(src_img_tensor)
+	print("coeffs shape: ", scat_coeffs.shape)
+	scat_coeffs= -scat_coeffs
+
+	len_order_1 = J*L
+	scat_coeffs_order_1 = scat_coeffs[1:1+len_order_1, :, :]
+	norm_order_1 = mpl.colors.Normalize(scat_coeffs_order_1.min(), scat_coeffs_order_1.max(), clip=True)
+	mapper_order_1 = cm.ScalarMappable(norm=norm_order_1, cmap="gray")
+
+	len_order_2 = (J*(J-1)//2)*(L**2)
+	scat_coeffs_order_2 = scat_coeffs[1+len_order_1:, :, :]
+	norm_order_2 = mpl.colors.Normalize(scat_coeffs_order_2.min(), scat_coeffs_order_2.max(), clip=True)
+	mapper_order_2 = cm.ScalarMappable(norm=norm_order_2, cmap="gray")
+
+	window_rows, window_columns = scat_coeffs.shape[1:]
+
+	return ATG_image,scat_coeffs_order_2
+
+def identification(img, threshold,all_images_feats):
+	query_arr = np.zeros(shape=(1,120000))
+	proc,arr = preprocessed_coeff(img)
+	query_arr = np.array(arr.flatten())
+	# print(overall_arr)
+
+	DIST = []
+	for i in range(600):
+		dist1 = np.linalg.norm(query_arr - all_images_feats[i])
+		DIST.append(dist1)
+	# print(DIST)
+
+	dd = {}
+	img_idx_list = ['AA_1_LT1', 'AA_1_LT2', 'AA_1_LT3', 'AA_1_LT4', 'AA_1_RT1', 'AA_1_RT2', 'AA_1_RT3', 'AA_1_RT4', 'AA_2_LI1', 'AA_2_LI2', 'AA_2_LI3', 'AA_2_LI4', 'AA_2_RI1', 'AA_2_RI2', 'AA_2_RI3', 'AA_2_RI4', 'AA_3_LM1', 'AA_3_LM2', 'AA_3_LM3', 'AA_3_LM4', 'AA_3_RM1', 'AA_3_RM2', 'AA_3_RM3', 'AA_3_RM4', 'AA_4_LR1', 'AA_4_LR2', 'AA_4_LR3', 'AA_4_LR4', 'AA_4_RR1', 'AA_4_RR2', 'AA_4_RR3', 'AA_4_RR4', 'AA_5_LL1', 'AA_5_LL2', 'AA_5_LL3', 'AA_5_LL4', 'AA_5_RL1', 'AA_5_RL2', 'AA_5_RL3', 'AA_5_RL4', 'AB_1_LT1', 'AB_1_LT2', 'AB_1_LT3', 'AB_1_LT4', 'AB_1_RT1', 'AB_1_RT2', 'AB_1_RT3', 'AB_1_RT4', 'AB_2_LI1', 'AB_2_LI2', 'AB_2_LI3', 'AB_2_LI4', 'AB_2_RI1', 'AB_2_RI2', 'AB_2_RI3', 'AB_2_RI4', 'AB_3_LM1', 'AB_3_LM2', 'AB_3_LM3', 'AB_3_LM4', 'AB_3_RM1', 'AB_3_RM2', 'AB_3_RM3', 'AB_3_RM4', 'AB_4_LR1', 'AB_4_LR2', 'AB_4_LR3', 'AB_4_LR4', 'AB_4_RR1', 'AB_4_RR2', 'AB_4_RR3', 'AB_4_RR4', 'AB_5_LL1', 'AB_5_LL2', 'AB_5_LL3', 'AB_5_LL4', 'AB_5_RL1', 'AB_5_RL2', 'AB_5_RL3', 'AB_5_RL4', 'AC_1_LT1', 'AC_1_LT2', 'AC_1_LT3', 'AC_1_LT4', 'AC_1_RT1', 'AC_1_RT2', 'AC_1_RT3', 'AC_1_RT4', 'AC_2_LI1', 'AC_2_LI2', 'AC_2_LI3', 'AC_2_LI4', 'AC_2_RI1', 'AC_2_RI2', 'AC_2_RI3', 'AC_2_RI4', 'AC_3_LM1', 'AC_3_LM2', 'AC_3_LM3', 'AC_3_LM4', 'AC_3_RM1', 'AC_3_RM2', 'AC_3_RM3', 'AC_3_RM4', 'AC_4_LR1', 'AC_4_LR2', 'AC_4_LR3', 'AC_4_LR4', 'AC_4_RR1', 'AC_4_RR2', 'AC_4_RR3', 'AC_4_RR4', 'AC_5_LL1', 'AC_5_LL2', 'AC_5_LL3', 'AC_5_LL4', 'AC_5_RL1', 'AC_5_RL2', 'AC_5_RL3', 'AC_5_RL4', 'AD_1_LT1', 'AD_1_LT2', 'AD_1_LT3', 'AD_1_LT4', 'AD_1_RT1', 'AD_1_RT2', 'AD_1_RT3', 'AD_1_RT4', 'AD_2_LI1', 'AD_2_LI2', 'AD_2_LI3', 'AD_2_LI4', 'AD_2_RI1', 'AD_2_RI2', 'AD_2_RI3', 'AD_2_RI4', 'AD_3_LM1', 'AD_3_LM2', 'AD_3_LM3', 'AD_3_LM4', 'AD_3_RM1', 'AD_3_RM2', 'AD_3_RM3', 'AD_3_RM4', 'AD_4_LR1', 'AD_4_LR2', 'AD_4_LR3', 'AD_4_LR4', 'AD_4_RR1', 'AD_4_RR2', 'AD_4_RR3', 'AD_4_RR4', 'AD_5_LL1', 'AD_5_LL2', 'AD_5_LL3', 'AD_5_LL4', 'AD_5_RL1', 'AD_5_RL2', 'AD_5_RL3', 'AD_5_RL4', 'AE_1_LT1', 'AE_1_LT2', 'AE_1_LT3', 'AE_1_LT4', 'AE_1_RT1', 'AE_1_RT2', 'AE_1_RT3', 'AE_1_RT4', 'AE_2_LI1', 'AE_2_LI2', 'AE_2_LI3', 'AE_2_LI4', 'AE_2_RI1', 'AE_2_RI2', 'AE_2_RI3', 'AE_2_RI4', 'AE_3_LM1', 'AE_3_LM2', 'AE_3_LM3', 'AE_3_LM4', 'AE_3_RM1', 'AE_3_RM2', 'AE_3_RM3', 'AE_3_RM4', 'AE_4_LR1', 'AE_4_LR2', 'AE_4_LR3', 'AE_4_LR4', 'AE_4_RR1', 'AE_4_RR2', 'AE_4_RR3', 'AE_4_RR4', 'AE_5_LL1', 'AE_5_LL2', 'AE_5_LL3', 'AE_5_LL4', 'AE_5_RL1', 'AE_5_RL2', 'AE_5_RL3', 'AE_5_RL4', 'AF_1_LT1', 'AF_1_LT2', 'AF_1_LT3', 'AF_1_LT4', 'AF_1_RT1', 'AF_1_RT2', 'AF_1_RT3', 'AF_1_RT4', 'AF_2_LI1', 'AF_2_LI2', 'AF_2_LI3', 'AF_2_LI4', 'AF_2_RI1', 'AF_2_RI2', 'AF_2_RI3', 'AF_2_RI4', 'AF_3_LM1', 'AF_3_LM2', 'AF_3_LM3', 'AF_3_LM4', 'AF_3_RM1', 'AF_3_RM2', 'AF_3_RM3', 'AF_3_RM4', 'AF_4_LR1', 'AF_4_LR2', 'AF_4_LR3', 'AF_4_LR4', 'AF_4_RR1', 'AF_4_RR2', 'AF_4_RR3', 'AF_4_RR4', 'AF_5_LL1', 'AF_5_LL2', 'AF_5_LL3', 'AF_5_LL4', 'AF_5_RL1', 'AF_5_RL2', 'AF_5_RL3', 'AF_5_RL4', 'AG_1_LT1', 'AG_1_LT2', 'AG_1_LT3', 'AG_1_LT4', 'AG_1_RT1', 'AG_1_RT2', 'AG_1_RT3', 'AG_1_RT4', 'AG_2_LI1', 'AG_2_LI2', 'AG_2_LI3', 'AG_2_LI4', 'AG_2_RI1', 'AG_2_RI2', 'AG_2_RI3', 'AG_2_RI4', 'AG_3_LM1', 'AG_3_LM2', 'AG_3_LM3', 'AG_3_LM4', 'AG_3_RM1', 'AG_3_RM2', 'AG_3_RM3', 'AG_3_RM4', 'AG_4_LR1', 'AG_4_LR2', 'AG_4_LR3', 'AG_4_LR4', 'AG_4_RR1', 'AG_4_RR2', 'AG_4_RR3', 'AG_4_RR4', 'AG_5_LL1', 'AG_5_LL2', 'AG_5_LL3', 'AG_5_LL4', 'AG_5_RL1', 'AG_5_RL2', 'AG_5_RL3', 'AG_5_RL4', 'AH_1_LT1', 'AH_1_LT2', 'AH_1_LT3', 'AH_1_LT4', 'AH_1_RT1', 'AH_1_RT2', 'AH_1_RT3', 'AH_1_RT4', 'AH_2_LI1', 'AH_2_LI2', 'AH_2_LI3', 'AH_2_LI4', 'AH_2_RI1', 'AH_2_RI2', 'AH_2_RI3', 'AH_2_RI4', 'AH_3_LM1', 'AH_3_LM2', 'AH_3_LM3', 'AH_3_LM4', 'AH_3_RM1', 'AH_3_RM2', 'AH_3_RM3', 'AH_3_RM4', 'AH_4_LR1', 'AH_4_LR2', 'AH_4_LR3', 'AH_4_LR4', 'AH_4_RR1', 'AH_4_RR2', 'AH_4_RR3', 'AH_4_RR4', 'AH_5_LL1', 'AH_5_LL2', 'AH_5_LL3', 'AH_5_LL4', 'AH_5_RL1', 'AH_5_RL2', 'AH_5_RL3', 'AH_5_RL4', 'AJ_1_LT1', 'AJ_1_LT2', 'AJ_1_LT3', 'AJ_1_LT4', 'AJ_1_RT1', 'AJ_1_RT2', 'AJ_1_RT3', 'AJ_1_RT4', 'AJ_2_LI1', 'AJ_2_LI2', 'AJ_2_LI3', 'AJ_2_LI4', 'AJ_2_RI1', 'AJ_2_RI2', 'AJ_2_RI3', 'AJ_2_RI4', 'AJ_3_LM1', 'AJ_3_LM2', 'AJ_3_LM3', 'AJ_3_LM4', 'AJ_3_RM1', 'AJ_3_RM2', 'AJ_3_RM3', 'AJ_3_RM4', 'AJ_4_LR1', 'AJ_4_LR2', 'AJ_4_LR3', 'AJ_4_LR4', 'AJ_4_RR1', 'AJ_4_RR2', 'AJ_4_RR3', 'AJ_4_RR4', 'AJ_5_LL1', 'AJ_5_LL2', 'AJ_5_LL3', 'AJ_5_LL4', 'AJ_5_RL1', 'AJ_5_RL2', 'AJ_5_RL3', 'AJ_5_RL4', 'AK_1_LT1', 'AK_1_LT2', 'AK_1_LT3', 'AK_1_LT4', 'AK_1_RT1', 'AK_1_RT2', 'AK_1_RT3', 'AK_1_RT4', 'AK_2_LI1', 'AK_2_LI2', 'AK_2_LI3', 'AK_2_LI4', 'AK_2_RI1', 'AK_2_RI2', 'AK_2_RI3', 'AK_2_RI4', 'AK_3_LM1', 'AK_3_LM2', 'AK_3_LM3', 'AK_3_LM4', 'AK_3_RM1', 'AK_3_RM2', 'AK_3_RM3', 'AK_3_RM4', 'AK_4_LR1', 'AK_4_LR2', 'AK_4_LR3', 'AK_4_LR4', 'AK_4_RR1', 'AK_4_RR2', 'AK_4_RR3', 'AK_4_RR4', 'AK_5_LL1', 'AK_5_LL2', 'AK_5_LL3', 'AK_5_LL4', 'AK_5_RL1', 'AK_5_RL2', 'AK_5_RL3', 'AK_5_RL4', 'AL_1_LT1', 'AL_1_LT2', 'AL_1_LT3', 'AL_1_LT4', 'AL_1_RT1', 'AL_1_RT2', 'AL_1_RT3', 'AL_1_RT4', 'AL_2_LI1', 'AL_2_LI2', 'AL_2_LI3', 'AL_2_LI4', 'AL_2_RI1', 'AL_2_RI2', 'AL_2_RI3', 'AL_2_RI4', 'AL_3_LM1', 'AL_3_LM2', 'AL_3_LM3', 'AL_3_LM4', 'AL_3_RM1', 'AL_3_RM2', 'AL_3_RM3', 'AL_3_RM4', 'AL_4_LR1', 'AL_4_LR2', 'AL_4_LR3', 'AL_4_LR4', 'AL_4_RR1', 'AL_4_RR2', 'AL_4_RR3', 'AL_4_RR4', 'AL_5_LL1', 'AL_5_LL2', 'AL_5_LL3', 'AL_5_LL4', 'AL_5_RL1', 'AL_5_RL2', 'AL_5_RL3', 'AL_5_RL4', 'AM_1_LT1', 'AM_1_LT2', 'AM_1_LT3', 'AM_1_LT4', 'AM_1_RT1', 'AM_1_RT2', 'AM_1_RT3', 'AM_1_RT4', 'AM_2_LI1', 'AM_2_LI2', 'AM_2_LI3', 'AM_2_LI4', 'AM_2_RI1', 'AM_2_RI2', 'AM_2_RI3', 'AM_2_RI4', 'AM_3_LM1', 'AM_3_LM2', 'AM_3_LM3', 'AM_3_LM4', 'AM_3_RM1', 'AM_3_RM2', 'AM_3_RM3', 'AM_3_RM4', 'AM_4_LR1', 'AM_4_LR2', 'AM_4_LR3', 'AM_4_LR4', 'AM_4_RR1', 'AM_4_RR2', 'AM_4_RR3', 'AM_4_RR4', 'AM_5_LL1', 'AM_5_LL2', 'AM_5_LL3', 'AM_5_LL4', 'AM_5_RL1', 'AM_5_RL2', 'AM_5_RL3', 'AM_5_RL4', 'AN_1_LT1', 'AN_1_LT2', 'AN_1_LT3', 'AN_1_LT4', 'AN_1_RT1', 'AN_1_RT2', 'AN_1_RT3', 'AN_1_RT4', 'AN_2_LI1', 'AN_2_LI2', 'AN_2_LI3', 'AN_2_LI4', 'AN_2_RI1', 'AN_2_RI2', 'AN_2_RI3', 'AN_2_RI4', 'AN_3_LM1', 'AN_3_LM2', 'AN_3_LM3', 'AN_3_LM4', 'AN_3_RM1', 'AN_3_RM2', 'AN_3_RM3', 'AN_3_RM4', 'AN_4_LR1', 'AN_4_LR2', 'AN_4_LR3', 'AN_4_LR4', 'AN_4_RR1', 'AN_4_RR2', 'AN_4_RR3', 'AN_4_RR4', 'AN_5_LL1', 'AN_5_LL2', 'AN_5_LL3', 'AN_5_LL4', 'AN_5_RL1', 'AN_5_RL2', 'AN_5_RL3', 'AN_5_RL4', 'AO_1_LT1', 'AO_1_LT2', 'AO_1_LT3', 'AO_1_LT4', 'AO_1_RT1', 'AO_1_RT2', 'AO_1_RT3', 'AO_1_RT4', 'AO_2_LI1', 'AO_2_LI2', 'AO_2_LI3', 'AO_2_LI4', 'AO_2_RI1', 'AO_2_RI2', 'AO_2_RI3', 'AO_2_RI4', 'AO_3_LM1', 'AO_3_LM2', 'AO_3_LM3', 'AO_3_LM4', 'AO_3_RM1', 'AO_3_RM2', 'AO_3_RM3', 'AO_3_RM4', 'AO_4_LR1', 'AO_4_LR2', 'AO_4_LR3', 'AO_4_LR4', 'AO_4_RR1', 'AO_4_RR2', 'AO_4_RR3', 'AO_4_RR4', 'AO_5_LL1', 'AO_5_LL2', 'AO_5_LL3', 'AO_5_LL4', 'AO_5_RL1', 'AO_5_RL2', 'AO_5_RL3', 'AO_5_RL4', 'KR_1_LT1', 'KR_1_LT2', 'KR_1_LT3', 'KR_1_LT4', 'KR_1_RT1', 'KR_1_RT2', 'KR_1_RT3', 'KR_1_RT4', 'KR_2_LI1', 'KR_2_LI2', 'KR_2_LI3', 'KR_2_LI4', 'KR_2_RI1', 'KR_2_RI2', 'KR_2_RI3', 'KR_2_RI4', 'KR_3_LM1', 'KR_3_LM2', 'KR_3_LM3', 'KR_3_LM4', 'KR_3_RM1', 'KR_3_RM2', 'KR_3_RM3', 'KR_3_RM4', 'KR_4_LR1', 'KR_4_LR2', 'KR_4_LR3', 'KR_4_LR4', 'KR_4_RR1', 'KR_4_RR2', 'KR_4_RR3', 'KR_4_RR4', 'KR_5_LL1', 'KR_5_LL2', 'KR_5_LL3', 'KR_5_LL4', 'KR_5_RL1', 'KR_5_RL2', 'KR_5_RL3', 'KR_5_RL4']
+	for i in range(600):
+		dd[img_idx_list[i]] = DIST[i]
+	# print(dd)
+
+	sorted_dd = sorted(dd.items(), key=lambda x:x[1])
+	print()
+	print("The ranking is: ",sorted_dd[:10])
+
+	print()
+	print("The identified person is: ",sorted_dd[:1])
+	return[sorted_dd[:1]]

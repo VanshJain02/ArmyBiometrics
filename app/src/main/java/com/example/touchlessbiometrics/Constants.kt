@@ -8,5 +8,5 @@ object Constants {
     const val REQUEST_CODE_PERMISSIONS = 123
     val SHEET_NAME = "entry"
     val FILE_NAME = "DATA"
-    val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA, Manifest.permission.ACCESS_COARSE_LOCATION,Manifest.permission.ACCESS_FINE_LOCATION)
+    val REQUIRED_PERMISSIONS = arrayOf(Manifest.permission.CAMERA)
 }

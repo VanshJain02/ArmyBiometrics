@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">TouchlessBiometrics</string>
+    <string name="app_name">ArmyMatch</string>
     <string name="capture_button">Capture</string>
     <!-- Preference Titles -->
     <string name="messages_header">Messages</string>
